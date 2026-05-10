@@ -21,8 +21,8 @@ export const levels = [
     "y": 488
   },
   "goal": {
-    "x": 376,
-    "y": 96,
+    "x": 56,
+    "y": 488,
     "width": 8,
     "height": 8
   },
@@ -38,6 +38,60 @@ export const levels = [
       "y": 488,
       "width": 120,
       "height": 24
+    },
+    {
+      "x": 320,
+      "y": 480,
+      "width": 40,
+      "height": 32
+    },
+    {
+      "x": 360,
+      "y": 480,
+      "width": 16,
+      "height": 8
+    },
+    {
+      "x": 352,
+      "y": 424,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "x": 320,
+      "y": 424,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "x": 304,
+      "y": 408,
+      "width": 16,
+      "height": 48
+    },
+    {
+      "x": 8,
+      "y": 408,
+      "width": 296,
+      "height": 16
+    },
+    {
+      "x": 0,
+      "y": 408,
+      "width": 8,
+      "height": 88
+    },
+    {
+      "x": 360,
+      "y": 408,
+      "width": 16,
+      "height": 48
+    },
+    {
+      "x": 360,
+      "y": 456,
+      "width": 8,
+      "height": 8
     }
   ],
   "hazards": [
@@ -51,6 +105,18 @@ export const levels = [
       "x": 232,
       "y": 480,
       "width": 32,
+      "height": 8
+    },
+    {
+      "x": 304,
+      "y": 504,
+      "width": 16,
+      "height": 8
+    },
+    {
+      "x": 360,
+      "y": 504,
+      "width": 152,
       "height": 8
     }
   ],
@@ -73,6 +139,65 @@ export const levels = [
       "y": 448,
       "textIndex": 2,
       "scale": 0.25
+    }
+  ],
+  "springs": [
+    {
+      "x": 336,
+      "y": 472,
+      "width": 8,
+      "height": 8,
+      "force": 300,
+      "rotation": 0
+    },
+    {
+      "x": 80,
+      "y": 488,
+      "width": 8,
+      "height": 8,
+      "force": 300,
+      "rotation": 45
+    }
+  ],
+  "movingPlatforms": [
+    {
+      "x": 376,
+      "y": 480,
+      "width": 24,
+      "height": 8,
+      "speed": 30,
+      "waypoints": [
+        {
+          "x": 376,
+          "y": 480
+        },
+        {
+          "x": 376,
+          "y": 400
+        },
+        {
+          "x": 360,
+          "y": 400
+        }
+      ]
+    }
+  ],
+  "airVents": [
+    {
+      "x": 192,
+      "y": 480,
+      "rotation": 0,
+      "force": 200,
+      "range": 40
+    }
+  ],
+  "doors": [
+    {
+      "x": 368,
+      "y": 464,
+      "height": 16,
+      "openTime": 3,
+      "closeTime": 2
     }
   ]
 }

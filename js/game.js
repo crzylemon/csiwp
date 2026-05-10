@@ -3,6 +3,7 @@ import { levels, LEVEL_TEXTS } from './level.js';
 import { Renderer } from './renderer.js';
 import { Camera } from './camera.js';
 import { loadSprites } from './sprites.js';
+import { setRenderScale } from './sprites.js';
 import { loadTextSheet, drawText } from './text.js';
 import { TitleScreen } from './titlescreen.js';
 import { SplashScreen } from './splash.js';
@@ -10,11 +11,17 @@ import { SplashScreen2 } from './splash2.js';
 import { DeathEffect } from './deatheffect.js';
 import { initRespawnFrames, drawRespawnFrame, FRAME_COUNT } from './respawn.js';
 import { pollGamepad, gamepadState } from './gamepad.js';
+import { ParticleSystem } from './particles.js';
+import { MovingPlatform } from './movingplatform.js';
+import { AirVent } from './airvent.js';
+import { Door } from './door.js';
+import { initAudio, sfxJump, sfxLand, sfxDeath, sfxSpring, sfxGoal, sfxMenuSelect } from './audio.js';
 import { siteCheck } from './siteCheck.js';
 
 const VIEW_HEIGHT = 72;
 let VIEW_WIDTH = 128; // will be recalculated
 const RENDER_SCALE = 8;
+setRenderScale(RENDER_SCALE);
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -54,6 +61,11 @@ let deaths = 0;
 let level = levels[currentLevel];
 const player = new Player(level.spawn.x, level.spawn.y);
 
+// Initialize moving platforms from level data
+let movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
+let airVents = (level.airVents || []).map(d => new AirVent(d));
+let doors = (level.doors || []).map(d => new Door(d));
+
 // Position camera at spawn initially
 camera.x = level.spawn.x + 4 - VIEW_WIDTH / 2;
 camera.y = level.spawn.y + 4 - VIEW_HEIGHT / 2;
@@ -67,6 +79,7 @@ const splashScreen = new SplashScreen();
 const splashScreen2 = new SplashScreen2();
 const titleScreen = new TitleScreen();
 const deathEffect = new DeathEffect();
+const particles = new ParticleSystem();
 
 // die
 let shakeTimer = 0;
@@ -82,6 +95,7 @@ let scrollTo = { x: 0, y: 0 };
 const SCROLL_DURATION = 0.6;
 
 let portalTimer = 0;
+let justRespawned = false;
 const PORTAL_DURATION = 0.48; // last 60% of fragment travel
 
 function getConveyorColliders(conveyors) {
@@ -121,6 +135,7 @@ function triggerDeath() {
   state = 'shaking';
   player.dead = true;
   deathEffect.trigger(player.x, player.y, level.spawn.x, level.spawn.y);
+  sfxDeath();
 }
 
 function easeInOut(t) {
@@ -168,23 +183,84 @@ function update(dt) {
     if (!deathEffect.active) {
       state = 'alive';
       player.dead = false;
+      justRespawned = true;
     }
     return;
   }
 
   // gameplay
+  // Update moving platforms first
+  for (const mp of movingPlatforms) mp.update(dt);
+
+  // carry player on moving platforms (before physics)
+  for (const mp of movingPlatforms) {
+    const onTop =
+      Math.abs(player.y + player.height - mp.y) < 1.5 &&
+      player.x + player.width > mp.x &&
+      player.x < mp.x + mp.width &&
+      player.vy >= 0;
+    if (onTop) {
+      player.x += mp.deltaX;
+      player.y += mp.deltaY;
+    }
+  }
+
+  // update doors
+  for (const door of doors) door.update(dt);
+
   const allPlatforms = [
     ...level.platforms,
     ...getConveyorColliders(level.conveyors || []),
+    ...movingPlatforms.map(mp => mp.collider),
+    ...doors.map(d => d.collider).filter(Boolean),
   ];
 
+  const wasGrounded = player.grounded;
   player.update(dt, allPlatforms);
   applyConveyorPush(player, level.conveyors || [], dt);
 
-  // Spikes: kill on any overlap, but block horizontal entry
+  // air vents push player
+  for (const vent of airVents) {
+    vent.update(dt);
+    vent.applyForce(player, dt);
+  }
+
+  // moving platform crush — kill on overlap
+  for (const mp of movingPlatforms) {
+    const c = mp.collider;
+    if (player._overlaps(c)) {
+      triggerDeath();
+      return;
+    }
+  }
+
+  // door crush — just kill on overlap, no pushing
+  for (const door of doors) {
+    const c = door.collider;
+    if (!c) continue;
+    if (player._overlaps(c)) {
+      triggerDeath();
+      return;
+    }
+  }
+
+  // dust on land
+  if (!wasGrounded && player.grounded && !justRespawned) {
+    particles.spawnDust(player.x + player.width / 2 - 3, player.y + player.height - 2, 3);
+    sfxLand();
+  }
+  justRespawned = false;
+  // dust on jump
+  if (player.justJumped) {
+    particles.spawnDust(player.x + player.width / 2 - 3, player.y + player.height - 2, 2);
+    sfxJump();
+    player.justJumped = false;
+  }
+
+  // for spikes kill on any overlap, but block horizontal entry
   for (const h of level.hazards) {
     if (player._overlaps(h)) {
-      // Check if player is approaching from the side (horizontal overlap is small)
+      // check if player is approaching from the side (horizontal overlap is small)
       const overlapLeft = (player.x + player.width) - h.x;
       const overlapRight = (h.x + h.width) - player.x;
       const minOverlapX = Math.min(overlapLeft, overlapRight);
@@ -194,18 +270,36 @@ function update(dt) {
       const minOverlapY = Math.min(overlapTop, overlapBottom);
 
       if (minOverlapX < minOverlapY) {
-        // Horizontal collision — push player out (act as wall)
+        // horizontal collision so push player out (act as wall)
         if (overlapLeft < overlapRight) {
           player.x = h.x - player.width;
         } else {
           player.x = h.x + h.width;
         }
       } else {
-        // Vertical collision — you die
+        // Vertical collision so now you die
         triggerDeath();
         return;
       }
     }
+  }
+
+  // springs bounce player when landing on top
+  for (const s of (level.springs || [])) {
+    if (player._overlaps(s) && player.vy > 0) {
+      const onTop = player.y + player.height - player.vy * dt <= s.y;
+      if (onTop) {
+        player.y = s.y - player.height;
+        player.vy = -(s.force || 300);
+        player.grounded = false;
+        s._animTimer = 0.6;
+        sfxSpring();
+      }
+    }
+  }
+  // tick spring animations
+  for (const s of (level.springs || [])) {
+    if (s._animTimer > 0) s._animTimer -= dt;
   }
 
   // have i fallen?
@@ -215,14 +309,27 @@ function update(dt) {
   }
 
   // do i WIN?
-  if (player._overlaps(level.goal)) {
+  const goalRect = level.goal;
+  if (player._overlaps(goalRect)) {
+    sfxGoal();
     currentLevel++;
     if (currentLevel < levels.length) {
       level = levels[currentLevel];
+      movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
+      airVents = (level.airVents || []).map(d => new AirVent(d));
+      doors = (level.doors || []).map(d => new Door(d));
       player.respawn(level.spawn.x, level.spawn.y);
+      // Reset camera to new spawn
+      camera.x = level.spawn.x + 4 - VIEW_WIDTH / 2;
+      camera.y = level.spawn.y + 4 - VIEW_HEIGHT / 2;
+      camera.clamp(level.width || 320, level.height || 180);
+      startLevel();
     } else {
       currentLevel = 0;
       level = levels[currentLevel];
+      movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
+      airVents = (level.airVents || []).map(d => new AirVent(d));
+      doors = (level.doors || []).map(d => new Door(d));
       player.respawn(level.spawn.x, level.spawn.y);
     }
   }
@@ -253,12 +360,19 @@ function draw() {
   renderer.drawPlatforms(level.platforms, level.width || 320, level.height || 180);
   renderer.drawConveyors(level.conveyors || []);
   renderer.drawHazards(level.hazards);
+  renderer.drawSprings(level.springs);
+  // draw moving platforms
+  for (const mp of movingPlatforms) mp.draw(ctx);
+  // draw air vents
+  for (const vent of airVents) vent.draw(ctx);
+  // draw doors
+  for (const door of doors) door.draw(ctx);
   renderer.drawGoal(level.goal);
   renderer.drawLevelTexts(level.texts, LEVEL_TEXTS);
 
   // draw player
   if (state === 'alive') {
-    renderer.drawPlayer(player, RENDER_SCALE);
+    renderer.drawPlayer(player);
   }
 
   // draw the respawn anim
@@ -269,6 +383,9 @@ function draw() {
 
   // draw fragments
   deathEffect.draw(ctx);
+
+  // draw dust particles
+  particles.draw(ctx);
 
   ctx.restore();
 
@@ -328,6 +445,7 @@ function loop(timestamp) {
 
   update(dt);
   deathEffect.update(dt);
+  particles.update(dt);
   renderer.tick(dt);
   draw();
   requestAnimationFrame(loop);
@@ -342,11 +460,13 @@ window.addEventListener('keydown', (e) => {
   } else if (gameState === 'title' && e.code === 'Space') {
     gameState = 'playing';
     startLevel();
+    sfxMenuSelect();
   }
 });
 
 Promise.all([loadSprites(), loadTextSheet()]).then(() => {
   initRespawnFrames();
+  initAudio();
   lastTime = performance.now();
   requestAnimationFrame(loop);
 });

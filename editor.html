@@ -97,6 +97,10 @@
       <button id="tool-platform" class="active">Platform</button>
       <button id="tool-hazard">Hazard</button>
       <button id="tool-conveyor">Conveyor</button>
+      <button id="tool-spring">Spring</button>
+      <button id="tool-movplat">MovPlat</button>
+      <button id="tool-airvent">AirVent</button>
+      <button id="tool-door">Door</button>
       <button id="tool-text">Text</button>
       <button id="tool-spawn">Spawn</button>
       <button id="tool-goal">Goal</button>
@@ -115,6 +119,31 @@
     <input type="number" id="textIndex" value="0" min="0">
     <label>Text Scale</label>
     <input type="number" id="textScale" value="1" min="0.25" step="0.25">
+
+    <label>Spring Force</label>
+    <input type="number" id="springForce" value="300" step="25">
+    <label>Spring Rotation (degrees)</label>
+    <input type="number" id="springRotation" value="0" step="90">
+
+    <label>MovPlat Width (tiles)</label>
+    <input type="number" id="mpWidth" value="3" min="1">
+    <label>MovPlat Speed</label>
+    <input type="number" id="mpSpeed" value="30" step="5">
+    <label style="font-size:10px;color:#aaa;">Click = place start, Shift+Click = add waypoint to last placed</label>
+
+    <label>AirVent Rotation (0=up 90=right 180=down 270=left)</label>
+    <input type="number" id="ventRotation" value="0" step="90">
+    <label>AirVent Force</label>
+    <input type="number" id="ventForce" value="200" step="25">
+    <label>AirVent Range (px)</label>
+    <input type="number" id="ventRange" value="40" step="8">
+
+    <label>Door Height (tiles)</label>
+    <input type="number" id="doorHeight" value="3" min="2">
+    <label>Door Open Time (sec)</label>
+    <input type="number" id="doorOpenTime" value="3" step="0.5">
+    <label>Door Close Time (sec)</label>
+    <input type="number" id="doorCloseTime" value="2" step="0.5">
 
     <button id="btn-export" style="margin-top:12px; background:#0a84ff;">Export JSON</button>
     <button id="btn-import">Import JSON</button>
@@ -147,6 +176,10 @@
     let hazards = [];
     let conveyors = [];
     let texts = [];
+    let springs = [];
+    let movingPlatforms = [];
+    let airVents = [];
+    let doors = [];
 
     function resize() {
       levelWidth = parseInt(document.getElementById('levelWidth').value) || 400;
@@ -206,6 +239,46 @@
         render();
         return;
       }
+      if (tool === 'spring') {
+        const force = parseInt(document.getElementById('springForce').value) || 300;
+        const rotation = parseInt(document.getElementById('springRotation').value) || 0;
+        springs.push({ x: tile.x, y: tile.y, width: 8, height: 8, force, rotation });
+        render();
+        return;
+      }
+      if (tool === 'movplat') {
+        const w = (parseInt(document.getElementById('mpWidth').value) || 3) * TILE;
+        const speed = parseInt(document.getElementById('mpSpeed').value) || 30;
+        if (e.shiftKey && movingPlatforms.length > 0) {
+          // Add waypoint to last placed moving platform
+          const last = movingPlatforms[movingPlatforms.length - 1];
+          last.waypoints.push({ x: tile.x, y: tile.y });
+        } else {
+          // New moving platform
+          movingPlatforms.push({
+            x: tile.x, y: tile.y, width: w, height: 8, speed,
+            waypoints: [{ x: tile.x, y: tile.y }]
+          });
+        }
+        render();
+        return;
+      }
+      if (tool === 'airvent') {
+        const rotation = parseInt(document.getElementById('ventRotation').value) || 0;
+        const force = parseInt(document.getElementById('ventForce').value) || 200;
+        const range = parseInt(document.getElementById('ventRange').value) || 40;
+        airVents.push({ x: tile.x, y: tile.y, rotation, force, range });
+        render();
+        return;
+      }
+      if (tool === 'door') {
+        const height = (parseInt(document.getElementById('doorHeight').value) || 3) * TILE;
+        const openTime = parseFloat(document.getElementById('doorOpenTime').value) || 3;
+        const closeTime = parseFloat(document.getElementById('doorCloseTime').value) || 2;
+        doors.push({ x: tile.x, y: tile.y, height, openTime, closeTime });
+        render();
+        return;
+      }
       if (tool === 'erase') {
         eraseAt(tile.x, tile.y);
         render();
@@ -229,7 +302,7 @@
       if (rect.width === 0 || rect.height === 0) return;
 
       if (tool === 'platform') platforms.push(rect);
-      else if (tool === 'hazard') hazards.push(rect);
+      else if (tool === 'hazard' && rect.width > 1 && rect.height == 1) hazards.push(rect);
       else if (tool === 'conveyor') {
         conveyors.push({
           ...rect,
@@ -253,6 +326,15 @@
       hazards = hazards.filter(h => !contains(h, tx, ty));
       conveyors = conveyors.filter(c => !contains(c, tx, ty));
       texts = texts.filter(t => !(t.x === tx && t.y === ty));
+      springs = springs.filter(s => !(s.x === tx && s.y === ty));
+      movingPlatforms = movingPlatforms.filter(mp => {
+        // erase if clicking on start position or any waypoint
+        if (mp.x === tx && mp.y === ty) return false;
+        mp.waypoints = mp.waypoints.filter(w => !(w.x === tx && w.y === ty));
+        return true;
+      });
+      airVents = airVents.filter(v => !(v.x === tx && v.y === ty));
+      doors = doors.filter(d => !(d.x === tx && d.y === ty));
     }
 
     function contains(rect, tx, ty) {
@@ -308,6 +390,62 @@
         ctx.fillStyle = '#88ddff';
       }
 
+      // springs
+      ctx.fillStyle = '#44ff44';
+      ctx.font = '4px monospace';
+      for (const s of springs) {
+        ctx.fillRect(s.x, s.y, TILE, TILE);
+        ctx.fillStyle = '#fff';
+        ctx.fillText('S', s.x + 2, s.y + 6);
+        ctx.fillStyle = '#44ff44';
+      }
+
+      // moving platforms
+      for (const mp of movingPlatforms) {
+        // Draw platform rect
+        ctx.fillStyle = '#aa66ff';
+        ctx.fillRect(mp.x, mp.y, mp.width, mp.height || 8);
+        // Draw waypoints and lines
+        ctx.strokeStyle = '#aa66ff';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < mp.waypoints.length; i++) {
+          const wp = mp.waypoints[i];
+          if (i > 0) {
+            const prev = mp.waypoints[i - 1];
+            ctx.beginPath();
+            ctx.moveTo(prev.x + mp.width / 2, prev.y + 4);
+            ctx.lineTo(wp.x + mp.width / 2, wp.y + 4);
+            ctx.stroke();
+          }
+          // Waypoint dot
+          ctx.fillStyle = i === 0 ? '#aa66ff' : '#ff66aa';
+          ctx.fillRect(wp.x + mp.width / 2 - 1, wp.y + 3, 3, 3);
+        }
+      }
+
+      // air vents
+      for (const v of airVents) {
+        ctx.fillStyle = '#66ccff';
+        ctx.fillRect(v.x, v.y, TILE, TILE);
+        // Draw direction arrow
+        ctx.fillStyle = '#fff';
+        ctx.font = '4px monospace';
+        const arrows = { 0: '^', 90: '>', 180: 'v', 270: '<' };
+        ctx.fillText(arrows[v.rotation] || '^', v.x + 2, v.y + 6);
+      }
+
+      // doors
+      for (const d of doors) {
+        ctx.fillStyle = '#ff8844';
+        ctx.fillRect(d.x, d.y, TILE, d.height);
+        // Pulley above
+        ctx.fillStyle = '#ffaa66';
+        ctx.fillRect(d.x, d.y - TILE, TILE, TILE);
+        ctx.fillStyle = '#fff';
+        ctx.font = '4px monospace';
+        ctx.fillText('D', d.x + 2, d.y + 5);
+      }
+
       // preview the thing
       if (drawing && startTile && currentTile) {
         const preview = makeRect(startTile, currentTile);
@@ -328,6 +466,10 @@
         hazards,
         conveyors,
         texts,
+        springs,
+        movingPlatforms,
+        airVents,
+        doors,
       };
       document.getElementById('output').value = JSON.stringify(data, null, 2);
     });
@@ -346,6 +488,10 @@
         hazards = data.hazards || [];
         conveyors = data.conveyors || [];
         texts = data.texts || [];
+        springs = data.springs || [];
+        movingPlatforms = data.movingPlatforms || [];
+        airVents = data.airVents || [];
+        doors = data.doors || [];
         resize();
       } catch (e) {
         alert('Invalid JSON');
@@ -358,6 +504,10 @@
       hazards = [];
       conveyors = [];
       texts = [];
+      springs = [];
+      movingPlatforms = [];
+      airVents = [];
+      doors = [];
       spawn = { x: 16, y: 96 };
       goal = { x: 376, y: 96 };
       render();

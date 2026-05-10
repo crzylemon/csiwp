@@ -27,6 +27,7 @@ export class Player {
         if (this.grounded) {
           this.vy = this.jumpForce;
           this.grounded = false;
+          this.justJumped = true;
         }
         this.keys.jump = true;
       }
@@ -48,6 +49,7 @@ export class Player {
     if (jump && this.grounded) {
       this.vy = this.jumpForce;
       this.grounded = false;
+      this.justJumped = true;
     }
 
     // horizontal moving

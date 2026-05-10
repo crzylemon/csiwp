@@ -25,11 +25,8 @@ export class Renderer {
     this.ctx.fillRect(0, 0, width, height);
   }
 
-  drawPlayer(player, renderScale) {
-    const rs = renderScale || 1;
-    const px = Math.round(player.x * rs) / rs;
-    const py = Math.round(player.y * rs) / rs;
-    drawSprite(this.ctx, SPRITES.PLAYER, px, py);
+  drawPlayer(player) {
+    drawSprite(this.ctx, SPRITES.PLAYER, player.x, player.y);
   }
 
   drawPlatforms(platforms, levelWidth, levelHeight) {
@@ -145,8 +142,45 @@ export class Renderer {
   }
 
   drawGoal(goal) {
-    this.ctx.fillStyle = '#ffdd00';
-    this.ctx.fillRect(goal.x, goal.y, goal.width, goal.height);
+    // new animated flag
+    const frameIdx = SPRITES.FLAG[this.animFrame];
+    drawSprite(this.ctx, frameIdx, goal.x, goal.y);
+  }
+
+  drawSprings(springs) {
+    if (!springs) return;
+    const frameDur = this.animInterval;
+    for (const s of springs) {
+      // Frames: 0=idle, 1=full extend, 2-4=retracting
+      // Sequence: 0 -> 1 -> 1 (hold) -> 2 -> 3 -> 4 -> 0
+      let frameIdx;
+      const t = s._animTimer || 0;
+      if (t <= 0) {
+        frameIdx = SPRITES.SPRING[0]; // idle
+      } else if (t > frameDur * 5) {
+        frameIdx = SPRITES.SPRING[1]; // full extend
+      } else if (t > frameDur * 4) {
+        frameIdx = SPRITES.SPRING[1]; // hold extended
+      } else if (t > frameDur * 3) {
+        frameIdx = SPRITES.SPRING[2]; // retracting
+      } else if (t > frameDur * 2) {
+        frameIdx = SPRITES.SPRING[3];
+      } else if (t > frameDur * 1) {
+        frameIdx = SPRITES.SPRING[4];
+      } else {
+        frameIdx = SPRITES.SPRING[0]; // back to idle
+      }
+
+      if (s.rotation) {
+        this.ctx.save();
+        this.ctx.translate(s.x + TILE_SIZE / 2, s.y + TILE_SIZE / 2);
+        this.ctx.rotate(s.rotation * Math.PI / 180);
+        drawSprite(this.ctx, frameIdx, -TILE_SIZE / 2, -TILE_SIZE / 2);
+        this.ctx.restore();
+      } else {
+        drawSprite(this.ctx, frameIdx, s.x, s.y);
+      }
+    }
   }
 
   drawDeathCount(deaths) {
