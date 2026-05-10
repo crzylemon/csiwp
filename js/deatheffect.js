@@ -27,6 +27,42 @@ export class DeathEffect {
     return this.explodeDuration + this.travelDuration + this.assembleDuration;
   }
 
+  // spawn version
+  triggerFromBelow(spawnX, spawnY) {
+    this.active = true;
+    this.timer = 0;
+    this.phase = 'travel'; // skip explode, go straight to travel
+    this.spawnX = spawnX;
+    this.spawnY = spawnY;
+
+    this.fragments = [];
+    for (let fy = 0; fy < TILE / FRAG_SIZE; fy++) {
+      for (let fx = 0; fx < TILE / FRAG_SIZE; fx++) {
+        // scatter
+        const offsetX = (Math.random() - 0.5) * 30;
+        const offsetY = 30 + Math.random() * 20; // below spawn
+        const startRotation = (Math.random() - 0.5) * 8;
+
+        this.fragments.push({
+          sx: fx * FRAG_SIZE,
+          sy: fy * FRAG_SIZE,
+          x: spawnX + fx * FRAG_SIZE + offsetX,
+          y: spawnY + fy * FRAG_SIZE + offsetY,
+          vx: 0,
+          vy: 0,
+          rotation: startRotation,
+          rotSpeed: 0,
+          targetX: spawnX + fx * FRAG_SIZE,
+          targetY: spawnY + fy * FRAG_SIZE,
+          explodedX: spawnX + fx * FRAG_SIZE + offsetX,
+          explodedY: spawnY + fy * FRAG_SIZE + offsetY,
+          explodedRotation: startRotation,
+          travelVariance: 0.7 + Math.random() * 0.3,
+        });
+      }
+    }
+  }
+
   trigger(deathX, deathY, spawnX, spawnY) {
     this.active = true;
     this.timer = 0;
@@ -61,6 +97,10 @@ export class DeathEffect {
           // exploded pos
           explodedX: 0,
           explodedY: 0,
+          // rotation snapshot (set at end of explode)
+          explodedRotation: 0,
+          // per-fragment variance for travel easing (0.7 - 1.0)
+          travelVariance: 0.7 + Math.random() * 0.3,
         });
       }
     }
@@ -79,10 +119,11 @@ export class DeathEffect {
         f.rotation += f.rotSpeed * dt;
       }
       if (this.timer >= this.explodeDuration) {
-        // store pos
+        // store pos and rotation
         for (const f of this.fragments) {
           f.explodedX = f.x;
           f.explodedY = f.y;
+          f.explodedRotation = f.rotation;
         }
         this.phase = 'travel';
         this.timer = 0;
@@ -90,12 +131,14 @@ export class DeathEffect {
     } else if (this.phase === 'travel') {
       // travel to the spawn
       const t = Math.min(this.timer / this.travelDuration, 1);
-      const e = easeInOut(t);
       for (const f of this.fragments) {
+        // Per-fragment eased progress with variance
+        const ft = Math.min(t / f.travelVariance, 1);
+        const e = easeInOut(ft);
         f.x = f.explodedX + (f.targetX - f.explodedX) * e;
         f.y = f.explodedY + (f.targetY - f.explodedY) * e;
-        // slow down rotation
-        f.rotation += f.rotSpeed * dt * (1 - e);
+        // Ease rotation to 0
+        f.rotation = f.explodedRotation * (1 - e);
       }
       if (t >= 1) {
         this.phase = 'assemble';

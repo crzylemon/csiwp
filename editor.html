@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CSIWP Level Editor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #222;
+      color: #eee;
+      font-family: monospace;
+      display: flex;
+      height: 100vh;
+    }
+    #sidebar {
+      width: 220px;
+      padding: 12px;
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+    #sidebar h2 {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    #sidebar label {
+      font-size: 11px;
+      display: block;
+      margin-top: 6px;
+    }
+    #sidebar input {
+      width: 100%;
+      background: #333;
+      border: 1px solid #555;
+      color: #eee;
+      padding: 4px;
+      font-size: 12px;
+    }
+    #sidebar button {
+      padding: 6px 8px;
+      background: #444;
+      border: 1px solid #666;
+      color: #eee;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    #sidebar button:hover {
+      background: #555;
+    }
+    #sidebar button.active {
+      background: #0a84ff;
+      border-color: #0a84ff;
+    }
+    .tool-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    #canvas-wrap {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      cursor: crosshair;
+      image-rendering: pixelated;
+    }
+    #output {
+      width: 100%;
+      height: 120px;
+      background: #111;
+      border: 1px solid #555;
+      color: #0f0;
+      font-size: 10px;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <h2>Level Editor</h2>
+
+    <label>Level Width (px)</label>
+    <input type="number" id="levelWidth" value="400" step="8">
+    <label>Level Height (px)</label>
+    <input type="number" id="levelHeight" value="120" step="8">
+
+    <label>Tool</label>
+    <div class="tool-row">
+      <button id="tool-platform" class="active">Platform</button>
+      <button id="tool-hazard">Hazard</button>
+      <button id="tool-conveyor">Conveyor</button>
+      <button id="tool-text">Text</button>
+      <button id="tool-spawn">Spawn</button>
+      <button id="tool-goal">Goal</button>
+      <button id="tool-erase">Erase</button>
+    </div>
+
+    <label>Conveyor Direction</label>
+    <div class="tool-row">
+      <button id="conv-left" class="active">Left</button>
+      <button id="conv-right">Right</button>
+    </div>
+    <label>Conveyor Speed</label>
+    <input type="number" id="convSpeed" value="40" step="5">
+
+    <label>Text Index</label>
+    <input type="number" id="textIndex" value="0" min="0">
+    <label>Text Scale</label>
+    <input type="number" id="textScale" value="1" min="0.25" step="0.25">
+
+    <button id="btn-export" style="margin-top:12px; background:#0a84ff;">Export JSON</button>
+    <button id="btn-import">Import JSON</button>
+    <button id="btn-clear">Clear All</button>
+
+    <textarea id="output" placeholder="JSON output will appear here..."></textarea>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="editor"></canvas>
+  </div>
+
+  <script>
+// ACCORDING TO ALL KNOWN LAWS OF AVIATION, A BEE SHOULD NOT BE ABLE TO FLY...
+    const TILE = 8;
+    const SCALE = 4;
+    const canvas = document.getElementById('editor');
+    const ctx = canvas.getContext('2d');
+
+    let levelWidth = 400;
+    let levelHeight = 120;
+    let tool = 'platform';
+    let convDir = 'left';
+    let drawing = false;
+    let startTile = null;
+    let currentTile = null;
+
+    let spawn = { x: 16, y: 96 };
+    let goal = { x: 376, y: 96 };
+    let platforms = [];
+    let hazards = [];
+    let conveyors = [];
+    let texts = [];
+
+    function resize() {
+      levelWidth = parseInt(document.getElementById('levelWidth').value) || 400;
+      levelHeight = parseInt(document.getElementById('levelHeight').value) || 120;
+      canvas.width = levelWidth;
+      canvas.height = levelHeight;
+      canvas.style.width = levelWidth * SCALE + 'px';
+      canvas.style.height = levelHeight * SCALE + 'px';
+      render();
+    }
+
+    // Tool selection
+    document.querySelectorAll('[id^="tool-"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[id^="tool-"]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        tool = btn.id.replace('tool-', '');
+      });
+    });
+    document.getElementById('conv-left').addEventListener('click', () => {
+      convDir = 'left';
+      document.getElementById('conv-left').classList.add('active');
+      document.getElementById('conv-right').classList.remove('active');
+    });
+    document.getElementById('conv-right').addEventListener('click', () => {
+      convDir = 'right';
+      document.getElementById('conv-right').classList.add('active');
+      document.getElementById('conv-left').classList.remove('active');
+    });
+
+    document.getElementById('levelWidth').addEventListener('change', resize);
+    document.getElementById('levelHeight').addEventListener('change', resize);
+
+    function getTile(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / SCALE / TILE) * TILE;
+      const y = Math.floor((e.clientY - rect.top) / SCALE / TILE) * TILE;
+      return { x, y };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const tile = getTile(e);
+      if (tool === 'spawn') {
+        spawn = { x: tile.x, y: tile.y };
+        render();
+        return;
+      }
+      if (tool === 'goal') {
+        goal = { x: tile.x, y: tile.y };
+        render();
+        return;
+      }
+      if (tool === 'text') {
+        const textIndex = parseInt(document.getElementById('textIndex').value) || 0;
+        const scale = parseFloat(document.getElementById('textScale').value) || 1;
+        texts.push({ x: tile.x, y: tile.y, textIndex, scale });
+        render();
+        return;
+      }
+      if (tool === 'erase') {
+        eraseAt(tile.x, tile.y);
+        render();
+        return;
+      }
+      drawing = true;
+      startTile = tile;
+      currentTile = tile;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!drawing) return;
+      currentTile = getTile(e);
+      render();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      if (!drawing) return;
+      drawing = false;
+      const rect = makeRect(startTile, currentTile);
+      if (rect.width === 0 || rect.height === 0) return;
+
+      if (tool === 'platform') platforms.push(rect);
+      else if (tool === 'hazard') hazards.push(rect);
+      else if (tool === 'conveyor') {
+        conveyors.push({
+          ...rect,
+          direction: convDir,
+          speed: parseInt(document.getElementById('convSpeed').value) || 40,
+        });
+      }
+      render();
+    });
+
+    function makeRect(a, b) {
+      const x = Math.min(a.x, b.x);
+      const y = Math.min(a.y, b.y);
+      const w = Math.abs(b.x - a.x) + TILE;
+      const h = Math.abs(b.y - a.y) + TILE;
+      return { x, y, width: w, height: h };
+    }
+
+    function eraseAt(tx, ty) {
+      platforms = platforms.filter(p => !contains(p, tx, ty));
+      hazards = hazards.filter(h => !contains(h, tx, ty));
+      conveyors = conveyors.filter(c => !contains(c, tx, ty));
+      texts = texts.filter(t => !(t.x === tx && t.y === ty));
+    }
+
+    function contains(rect, tx, ty) {
+      return tx >= rect.x && tx < rect.x + rect.width && ty >= rect.y && ty < rect.y + rect.height;
+    }
+
+    function render() {
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, levelWidth, levelHeight);
+
+      // the grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      for (let x = 0; x < levelWidth; x += TILE) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, levelHeight); ctx.stroke();
+      }
+      for (let y = 0; y < levelHeight; y += TILE) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(levelWidth, y); ctx.stroke();
+      }
+
+      // platforms
+      ctx.fillStyle = '#3a3a5c';
+      for (const p of platforms) ctx.fillRect(p.x, p.y, p.width, p.height);
+
+      // hazards aka spikes
+      ctx.fillStyle = '#ff2255';
+      for (const h of hazards) ctx.fillRect(h.x, h.y, h.width, h.height);
+
+      // conveyer belts
+      ctx.fillStyle = '#5588ff';
+      for (const c of conveyors) {
+        ctx.fillRect(c.x, c.y, c.width, c.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '4px monospace';
+        ctx.fillText(c.direction[0].toUpperCase(), c.x + 1, c.y + 6);
+        ctx.fillStyle = '#5588ff';
+      }
+
+      // spawn
+      ctx.fillStyle = '#00ff88';
+      ctx.fillRect(spawn.x, spawn.y, TILE, TILE);
+
+      // goal
+      ctx.fillStyle = '#ffdd00';
+      ctx.fillRect(goal.x, goal.y, TILE, TILE);
+
+      // text
+      ctx.fillStyle = '#88ddff';
+      ctx.font = '4px monospace';
+      for (const t of texts) {
+        ctx.fillRect(t.x, t.y, TILE, TILE);
+        ctx.fillStyle = '#fff';
+        ctx.fillText('T' + t.textIndex, t.x + 1, t.y + 5);
+        ctx.fillStyle = '#88ddff';
+      }
+
+      // preview the thing
+      if (drawing && startTile && currentTile) {
+        const preview = makeRect(startTile, currentTile);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(preview.x, preview.y, preview.width, preview.height);
+      }
+    }
+
+    // export
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const data = {
+        width: levelWidth,
+        height: levelHeight,
+        spawn,
+        goal: { ...goal, width: TILE, height: TILE },
+        platforms,
+        hazards,
+        conveyors,
+        texts,
+      };
+      document.getElementById('output').value = JSON.stringify(data, null, 2);
+    });
+
+    // import
+    document.getElementById('btn-import').addEventListener('click', () => {
+      try {
+        const data = JSON.parse(document.getElementById('output').value);
+        levelWidth = data.width || 400;
+        levelHeight = data.height || 120;
+        document.getElementById('levelWidth').value = levelWidth;
+        document.getElementById('levelHeight').value = levelHeight;
+        spawn = data.spawn || { x: 16, y: 96 };
+        goal = data.goal || { x: 376, y: 96 };
+        platforms = data.platforms || [];
+        hazards = data.hazards || [];
+        conveyors = data.conveyors || [];
+        texts = data.texts || [];
+        resize();
+      } catch (e) {
+        alert('Invalid JSON');
+      }
+    });
+
+    // clear
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      platforms = [];
+      hazards = [];
+      conveyors = [];
+      texts = [];
+      spawn = { x: 16, y: 96 };
+      goal = { x: 376, y: 96 };
+      render();
+    });
+// I HAD VIRTUALLY NO REHEARSAL FOR THAT.
+    resize();
+  </script>
+</body>
+</html>

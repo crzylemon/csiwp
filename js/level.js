@@ -1,12 +1,24 @@
+// Text messages indexed by levels
+export const LEVEL_TEXTS = [
+  "WELCOME TO CSIWP",
+  "JUMP OVER THIS GAP",
+  "WATCH OUT FOR SPIKES!",
+  "USE THE CONVEYOR OR DONT",
+  "DONT FALL!",
+  "YOURE DEFINITELY GETTING THERE",
+  "JUST KIDDING YOURE NOT",
+  "GOOD LUCK!",
+];
+
 // taken from the level editor
 
 export const levels = [
 {
-  "width": 400,
-  "height": 120,
+  "width": 512,
+  "height": 512,
   "spawn": {
     "x": 16,
-    "y": 96
+    "y": 488
   },
   "goal": {
     "x": 376,
@@ -17,63 +29,50 @@ export const levels = [
   "platforms": [
     {
       "x": 0,
-      "y": 104,
-      "width": 400,
+      "y": 496,
+      "width": 152,
       "height": 16
     },
     {
-      "x": 72,
-      "y": 96,
-      "width": 16,
-      "height": 8
-    },
-    {
-      "x": 104,
-      "y": 80,
-      "width": 16,
+      "x": 184,
+      "y": 488,
+      "width": 120,
       "height": 24
-    },
-    {
-      "x": 136,
-      "y": 80,
-      "width": 16,
-      "height": 8
-    },
-    {
-      "x": 200,
-      "y": 80,
-      "width": 16,
-      "height": 8
-    },
-    {
-      "x": 232,
-      "y": 80,
-      "width": 16,
-      "height": 24
-    },
-    {
-      "x": 264,
-      "y": 96,
-      "width": 16,
-      "height": 8
     }
   ],
   "hazards": [
     {
-      "x": 120,
-      "y": 96,
-      "width": 112,
+      "x": 152,
+      "y": 504,
+      "width": 32,
+      "height": 8
+    },
+    {
+      "x": 232,
+      "y": 480,
+      "width": 32,
       "height": 8
     }
   ],
-  "conveyors": [
+  "conveyors": [],
+  "texts": [
     {
-      "x": 168,
-      "y": 80,
-      "width": 16,
-      "height": 8,
-      "direction": "left",
-      "speed": 40
+      "x": 40,
+      "y": 456,
+      "textIndex": 0,
+      "scale": 0.25
+    },
+    {
+      "x": 144,
+      "y": 464,
+      "textIndex": 1,
+      "scale": 0.25
+    },
+    {
+      "x": 240,
+      "y": 448,
+      "textIndex": 2,
+      "scale": 0.25
     }
   ]
 }

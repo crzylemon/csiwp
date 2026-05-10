@@ -1,5 +1,5 @@
 import { Player } from './player.js';
-import { levels } from './level.js';
+import { levels, LEVEL_TEXTS } from './level.js';
 import { Renderer } from './renderer.js';
 import { Camera } from './camera.js';
 import { loadSprites } from './sprites.js';
@@ -54,6 +54,11 @@ let deaths = 0;
 let level = levels[currentLevel];
 const player = new Player(level.spawn.x, level.spawn.y);
 
+// Position camera at spawn initially
+camera.x = level.spawn.x + 4 - VIEW_WIDTH / 2;
+camera.y = level.spawn.y + 4 - VIEW_HEIGHT / 2;
+camera.clamp(level.width || 320, level.height || 180);
+
 let lastTime = 0;
 
 // splash, splash2, title, or playing.
@@ -100,6 +105,13 @@ function applyConveyorPush(player, conveyors, dt) {
       player.x += (c.direction === 'left' ? -speed : speed) * dt;
     }
   }
+}
+
+function startLevel() {
+  state = 'portal';
+  player.dead = true;
+  portalTimer = 0;
+  deathEffect.triggerFromBelow(level.spawn.x, level.spawn.y);
 }
 
 function triggerDeath() {
@@ -169,11 +181,30 @@ function update(dt) {
   player.update(dt, allPlatforms);
   applyConveyorPush(player, level.conveyors || [], dt);
 
-  // am i gonna die?
+  // Spikes: kill on any overlap, but block horizontal entry
   for (const h of level.hazards) {
     if (player._overlaps(h)) {
-      triggerDeath();
-      return;
+      // Check if player is approaching from the side (horizontal overlap is small)
+      const overlapLeft = (player.x + player.width) - h.x;
+      const overlapRight = (h.x + h.width) - player.x;
+      const minOverlapX = Math.min(overlapLeft, overlapRight);
+
+      const overlapTop = (player.y + player.height) - h.y;
+      const overlapBottom = (h.y + h.height) - player.y;
+      const minOverlapY = Math.min(overlapTop, overlapBottom);
+
+      if (minOverlapX < minOverlapY) {
+        // Horizontal collision — push player out (act as wall)
+        if (overlapLeft < overlapRight) {
+          player.x = h.x - player.width;
+        } else {
+          player.x = h.x + h.width;
+        }
+      } else {
+        // Vertical collision — you die
+        triggerDeath();
+        return;
+      }
     }
   }
 
@@ -223,10 +254,11 @@ function draw() {
   renderer.drawConveyors(level.conveyors || []);
   renderer.drawHazards(level.hazards);
   renderer.drawGoal(level.goal);
+  renderer.drawLevelTexts(level.texts, LEVEL_TEXTS);
 
   // draw player
   if (state === 'alive') {
-    renderer.drawPlayer(player);
+    renderer.drawPlayer(player, RENDER_SCALE);
   }
 
   // draw the respawn anim
@@ -285,7 +317,7 @@ function loop(timestamp) {
     titleScreen.update(dt);
     titleScreen.draw(ctx, VIEW_WIDTH, VIEW_HEIGHT);
     ctx.restore();
-    if (gamepadState.startPressed) gameState = 'playing';
+    if (gamepadState.startPressed) { gameState = 'playing'; startLevel(); }
     requestAnimationFrame(loop);
     return;
   }
@@ -309,6 +341,7 @@ window.addEventListener('keydown', (e) => {
     gameState = 'title';
   } else if (gameState === 'title' && e.code === 'Space') {
     gameState = 'playing';
+    startLevel();
   }
 });
 

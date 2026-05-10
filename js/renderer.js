@@ -25,8 +25,11 @@ export class Renderer {
     this.ctx.fillRect(0, 0, width, height);
   }
 
-  drawPlayer(player) {
-    drawSprite(this.ctx, SPRITES.PLAYER, player.x, player.y);
+  drawPlayer(player, renderScale) {
+    const rs = renderScale || 1;
+    const px = Math.round(player.x * rs) / rs;
+    const py = Math.round(player.y * rs) / rs;
+    drawSprite(this.ctx, SPRITES.PLAYER, px, py);
   }
 
   drawPlatforms(platforms, levelWidth, levelHeight) {
@@ -151,6 +154,23 @@ export class Renderer {
       drawText(this.ctx, `DEATHS-${deaths}`, 2, 2);
     } else {
       drawText(this.ctx, `DEATHS-238534758235356362`, 2, 2); //big number
+    }
+  }
+
+  drawLevelTexts(texts, levelTexts) {
+    if (!texts) return;
+    for (const t of texts) {
+      const msg = levelTexts[t.textIndex] || '';
+      const scale = t.scale || 1;
+      if (scale !== 1) {
+        this.ctx.save();
+        this.ctx.translate(t.x, t.y);
+        this.ctx.scale(scale, scale);
+        drawText(this.ctx, msg, 0, 0);
+        this.ctx.restore();
+      } else {
+        drawText(this.ctx, msg, t.x, t.y);
+      }
     }
   }
 }

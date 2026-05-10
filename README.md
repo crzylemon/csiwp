@@ -43,7 +43,7 @@ generate_bee.py     - Generates bee.txt from the Bee Movie script
 
 ## Level Editor
 
-The editor is currently closed-source, but i'm working on cleaning up the code so it can become open-source!!!
+The editor should be easy to use.
 
 ## Easter Eggs
 
