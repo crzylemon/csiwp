@@ -1,7 +1,6 @@
-# CSIWP
-(full name not revealed yet >:D)
+# Assembly Required
 
-A pixel art rage platformer built with HTML5 Canvas 2D.
+A pixel art rage platformer built with HTML5 Canvas 2D, themed in a factory.
 
 ## Play
 
@@ -27,7 +26,7 @@ js/
   sprites.js        - Sprite sheet loader
   camera.js         - Smooth follow camera with easing
   level.js          - Level data
-  text.js           - Bitmap font renderer (csiwp-text.png)
+  text.js           - Bitmap font renderer (as-text.png)
   titlescreen.js    - Title screen with logo + badge drop
   splash.js         - CRZ.Network splash
   splash2.js        - Random message splash (+ bee movie easter egg)
@@ -35,8 +34,8 @@ js/
   respawn.js        - Respawn animation (blue channel = opacity)
   gamepad.js        - Controller support via Gamepad API
 gamesprites.png     - Game sprite sheet (8x8 tiles)
-csiwp-text.png      - Bitmap font + CRZ.Network logo
-csiwp.png           - Game logo
+as-text.png         - Bitmap font + CRZ.Network logo
+as.png              - Game logo
 logobadges.png      - Version badges (DEMO/BETA/ALPHA/UNAUTHORIZED)
 generate_bee.py     - Generates bee.txt from the Bee Movie script
 ```

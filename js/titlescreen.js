@@ -18,7 +18,7 @@ const BADGE_HEIGHT = 16;
  * badge index (0=demo, 1=beta, 2=alpha, 3=unauthorized)
  * @type {number}
  */
-let BADGE_INDEX = 2;
+let BADGE_INDEX = 1;
 
 /**
  * delay before badge drops in seconds
@@ -71,7 +71,7 @@ let badgeLoaded = false;
 // load needed stuff
 const logo = new Image();
 logo.onload = () => { logoImg = logo; logoLoaded = true; };
-logo.src = 'csiwp.png';
+logo.src = 'as.png';
 
 const badge = new Image();
 badge.onload = () => { badgeImg = badge; badgeLoaded = true; };
@@ -193,8 +193,8 @@ export class TitleScreen {
         );
       }
     } else {
-      // fallback of just "CSIWP"
-      drawText(ctx, "CSIWP", Math.round(viewWidth / 2 - 24), Math.round(viewHeight / 2 - 10));
+      // fallback of just "Assembly Required"
+      drawText(ctx, "Assembly Required", Math.round(viewWidth / 2 - 24), Math.round(viewHeight / 2 - 10));
     }
 
     // press space / controller button

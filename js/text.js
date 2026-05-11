@@ -39,7 +39,7 @@ export function loadTextSheet() {
       textSheet.loaded = true;
       resolve();
     };
-    img.src = 'csiwp-text.png';
+    img.src = 'as-text.png';
   });
 }
 
