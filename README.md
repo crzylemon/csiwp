@@ -58,3 +58,7 @@ No build step. Just serve the files with any static HTTP server.
 ```bash
 python3 -m http.server 8000
 ```
+
+## Music Credit
+
+- The current temporary music the game uses is Chaoz Fantasy by ParagonX9. It is licensed under CC-BY-SA.

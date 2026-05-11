@@ -1,12 +1,27 @@
 import { spriteSheet, SPRITES } from './sprites.js';
 
+/**
+ * tile size in pixels
+ * @type {number}
+ */
 const TILE = 8;
+
+/**
+ * number of respawn animation frames
+ * @type {number}
+ */
 const FRAME_COUNT = SPRITES.RESPAWN.length; // 7 frames
 
-// pre-rendered frames with alpha (Piskel has no alpha channel, only "completely transparent" or "opaque" so we use this funny hack)
+/**
+ * pre-rendered respawn frames with alpha
+ * @type {Array<HTMLCanvasElement>}
+ */
 let respawnFrames = [];
 
-// pre-process
+/**
+ * pre-process respawn sprite frames with alpha from blue channel
+ * @returns {void}
+ */
 export function initRespawnFrames() {
   respawnFrames = [];
 
@@ -57,6 +72,14 @@ export function initRespawnFrames() {
   }
 }
 
+/**
+ * draw a respawn animation frame
+ * @param {CanvasRenderingContext2D} ctx canvas context
+ * @param {number} frameIndex index of the frame to draw
+ * @param {number} x x position
+ * @param {number} y y position
+ * @returns {void}
+ */
 export function drawRespawnFrame(ctx, frameIndex, x, y) {
   if (frameIndex < 0 || frameIndex >= respawnFrames.length) return;
   ctx.drawImage(respawnFrames[frameIndex], x, y, TILE, TILE);

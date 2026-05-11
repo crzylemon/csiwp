@@ -101,6 +101,7 @@
       <button id="tool-movplat">MovPlat</button>
       <button id="tool-airvent">AirVent</button>
       <button id="tool-door">Door</button>
+      <button id="tool-hiddenspike">HidSpike</button>
       <button id="tool-text">Text</button>
       <button id="tool-spawn">Spawn</button>
       <button id="tool-goal">Goal</button>
@@ -180,6 +181,7 @@
     let movingPlatforms = [];
     let airVents = [];
     let doors = [];
+    let hiddenSpikes = [];
 
     function resize() {
       levelWidth = parseInt(document.getElementById('levelWidth').value) || 400;
@@ -279,6 +281,11 @@
         render();
         return;
       }
+      if (tool === 'hiddenspike') {
+        hiddenSpikes.push({ x: tile.x, y: tile.y, triggerDistance: 20 });
+        render();
+        return;
+      }
       if (tool === 'erase') {
         eraseAt(tile.x, tile.y);
         render();
@@ -335,6 +342,7 @@
       });
       airVents = airVents.filter(v => !(v.x === tx && v.y === ty));
       doors = doors.filter(d => !(d.x === tx && d.y === ty));
+      hiddenSpikes = hiddenSpikes.filter(s => !(s.x === tx && s.y === ty));
     }
 
     function contains(rect, tx, ty) {
@@ -446,6 +454,18 @@
         ctx.fillText('D', d.x + 2, d.y + 5);
       }
 
+      // hidden spikes
+      for (const s of hiddenSpikes) {
+        ctx.strokeStyle = '#ff2255';
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([1, 1]);
+        ctx.strokeRect(s.x, s.y, TILE, TILE);
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ff2255';
+        ctx.font = '3px monospace';
+        ctx.fillText('H', s.x + 2, s.y + 5);
+      }
+
       // preview the thing
       if (drawing && startTile && currentTile) {
         const preview = makeRect(startTile, currentTile);
@@ -470,6 +490,7 @@
         movingPlatforms,
         airVents,
         doors,
+        hiddenSpikes,
       };
       document.getElementById('output').value = JSON.stringify(data, null, 2);
     });
@@ -492,6 +513,7 @@
         movingPlatforms = data.movingPlatforms || [];
         airVents = data.airVents || [];
         doors = data.doors || [];
+        hiddenSpikes = data.hiddenSpikes || [];
         resize();
       } catch (e) {
         alert('Invalid JSON');
@@ -508,6 +530,7 @@
       movingPlatforms = [];
       airVents = [];
       doors = [];
+      hiddenSpikes = [];
       spawn = { x: 16, y: 96 };
       goal = { x: 376, y: 96 };
       render();

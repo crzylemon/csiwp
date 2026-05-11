@@ -1,16 +1,42 @@
 import { drawLogo, drawText, TEXT_TILE } from './text.js';
 import { siteCheck } from './siteCheck.js';
 
+/**
+ * splash screen duration in seconds
+ * @type {number}
+ */
 const SPLASH_DURATION = 2.5;
+
+/**
+ * fade in duration in seconds
+ * @type {number}
+ */
 const FADE_IN = 0.5;
+
+/**
+ * fade out duration in seconds
+ * @type {number}
+ */
 const FADE_OUT = 0.5;
 
+/**
+ * the first splash screen (hosted on)
+ */
 export class SplashScreen {
+  /**
+   * the first splash screen
+   * @constructor
+   */
   constructor() {
     this.timer = 0;
     this.done = false;
   }
 
+  /**
+   * update splash timer
+   * @param {number} dt delta time
+   * @returns {void}
+   */
   update(dt) {
     this.timer += dt;
     if (this.timer >= SPLASH_DURATION + 0.5) {
@@ -18,6 +44,13 @@ export class SplashScreen {
     }
   }
 
+  /**
+   * draw the splash screen
+   * @param {CanvasRenderingContext2D} ctx canvas context
+   * @param {number} viewWidth view width
+   * @param {number} viewHeight view height
+   * @returns {void}
+   */
   draw(ctx, viewWidth, viewHeight) {
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, viewWidth, viewHeight);

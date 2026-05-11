@@ -1,7 +1,18 @@
+import { Player } from './player.js';
 import { drawSprite, SPRITES, TILE_SIZE } from './sprites.js';
 
-// wind line particle
+/**
+ * wind line for air vents
+ */
 class WindLine {
+  /** 
+   * wind line for air vents
+   * @param {number} x x position
+   * @param {number} y y position
+   * @param {number} dirX x direction (-1, 0, or 1)
+   * @param {number} dirY y direction (-1, 0, or 1)
+   * @constructor //do i use it like this?
+  */
   constructor(x, y, dirX, dirY) {
     this.x = x;
     this.y = y;
@@ -13,12 +24,22 @@ class WindLine {
     this.length = 2 + Math.random() * 3;
   }
 
+  /**
+   * update the wind line
+   * @param {number} dt deltatime
+   * @returns {void}
+   */
   update(dt) {
     this.x += this.dirX * this.speed * dt;
     this.y += this.dirY * this.speed * dt;
     this.life -= dt;
   }
 
+  /**
+   * draw the wind line
+   * @param {CanvasRenderingContext2D} ctx context
+   * @returns {void}
+   */
   draw(ctx) {
     const alpha = this.life / this.maxLife;
     ctx.strokeStyle = `rgba(200, 220, 255, ${alpha * 0.6})`;
@@ -30,7 +51,15 @@ class WindLine {
   }
 }
 
+/**
+ * air vent object
+ */
 export class AirVent {
+  /**
+   * air vent object
+   * @param {Object} data data from map
+   * @constructor
+   */
   constructor(data) {
     this.x = data.x;
     this.y = data.y;
@@ -51,6 +80,10 @@ export class AirVent {
     this.spawnTimer = 0;
   }
 
+  /**
+   * calculate wind zone
+   * @returns {Object} zone
+   */
   _calcZone() {
     if (this.dirY < 0) {
       // blowing up, includes vent tile
@@ -67,6 +100,11 @@ export class AirVent {
     }
   }
 
+  /**
+   * check if this air vent zone overlaps player
+   * @param {Player} player the player
+   * @returns {Boolean}
+   */
   overlapsPlayer(player) {
     const z = this.zone;
     return (
@@ -77,6 +115,12 @@ export class AirVent {
     );
   }
 
+  /**
+   * apply force from air vent to player
+   * @param {Player} player the player
+   * @param {number} dt deltatime
+   * @returns {void}
+   */
   applyForce(player, dt) {
     if (!this.overlapsPlayer(player)) return;
 
@@ -96,6 +140,11 @@ export class AirVent {
     }
   }
 
+  /**
+   * update the air vent and wind lines
+   * @param {number} dt deltatime
+   * @returns {void}
+   */
   update(dt) {
     // spawn wind lines
     this.spawnTimer += dt;
@@ -119,6 +168,11 @@ export class AirVent {
     }
   }
 
+  /**
+   * draw the air vent and wind lines
+   * @param {CanvasRenderingContext2D} ctx context
+   * @returns {void}
+   */
   draw(ctx) {
     // draw vent sprite with rotation
     if (this.rotation !== 0) {

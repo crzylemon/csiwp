@@ -1,5 +1,13 @@
+/**
+ * tile size in pixels
+ * @type {number}
+ */
 const TILE_SIZE = 8;
 
+/**
+ * sprite sheet data
+ * @type {{image: HTMLImageElement|null, loaded: boolean, cols: number, rows: number}}
+ */
 export const spriteSheet = {
   image: null,
   loaded: false,
@@ -7,6 +15,10 @@ export const spriteSheet = {
   rows: 0,
 };
 
+/**
+ * load the sprite sheet image
+ * @returns {Promise<void>}
+ */
 export function loadSprites() {
   return new Promise((resolve) => {
     const img = new Image();
@@ -21,7 +33,11 @@ export function loadSprites() {
   });
 }
 
-// get sprite pos
+/**
+ * get source position for a sprite index
+ * @param {number} index sprite index
+ * @returns {{sx: number, sy: number}}
+ */
 function srcPos(index) {
   const i = index - 1;
   const col = i % spriteSheet.cols;
@@ -29,11 +45,28 @@ function srcPos(index) {
   return { sx: col * TILE_SIZE, sy: row * TILE_SIZE };
 }
 
-// render scale for sub-pixel snapping (set from game.js)
+/**
+ * render scale for sub-pixel snapping
+ * @type {number}
+ */
 export let renderScale = 1;
+
+/**
+ * set the render scale
+ * @param {number} s scale value
+ * @returns {void}
+ */
 export function setRenderScale(s) { renderScale = s; }
 
-// draw a sprite at screen pos, snapped to render pixel grid
+/**
+ * draw a sprite at screen position snapped to render pixel grid
+ * @param {CanvasRenderingContext2D} ctx canvas context
+ * @param {number} index sprite index
+ * @param {number} x x position
+ * @param {number} y y position
+ * @param {number} scale draw scale
+ * @returns {void}
+ */
 export function drawSprite(ctx, index, x, y, scale = 1) {
   const { sx, sy } = srcPos(index);
   const size = TILE_SIZE * scale;
@@ -46,7 +79,10 @@ export function drawSprite(ctx, index, x, y, scale = 1) {
   );
 }
 
-// sprite indexes ([cbr] = can be rotated)
+/**
+ * sprite index constants
+ * @type {Object}
+ */
 export const SPRITES = {
   PLAYER: 1,
   BLOCKS: [2, 3, 4, 5],

@@ -1,13 +1,31 @@
 import { drawSprite, SPRITES, TILE_SIZE } from './sprites.js';
 
+/**
+ * dust particle lifetime in seconds
+ * @type {number}
+ */
 const DUST_LIFETIME = 0.3;
 
+/**
+ * particle system for dust effects
+ */
 export class ParticleSystem {
+  /**
+   * particle system
+   * @constructor
+   */
   constructor() {
+    /** @type {Array<Object>} */
     this.particles = [];
   }
 
-  // dust at player's feet
+  /**
+   * spawn dust particles at player's feet
+   * @param {number} x x position
+   * @param {number} y y position
+   * @param {number} count number of particles to spawn
+   * @returns {void}
+   */
   spawnDust(x, y, count = 3) {
     for (let i = 0; i < count; i++) {
       this.particles.push({
@@ -21,6 +39,11 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * update all particles
+   * @param {number} dt delta time
+   * @returns {void}
+   */
   update(dt) {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -34,6 +57,11 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * draw all particles
+   * @param {CanvasRenderingContext2D} ctx canvas context
+   * @returns {void}
+   */
   draw(ctx) {
     for (const p of this.particles) {
       const progress = 1 - (p.life / p.maxLife); // 0 -> 1

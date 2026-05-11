@@ -1,8 +1,15 @@
 // gamepad stuff
 // mapping: https://w3c.github.io/gamepad/#remapping
 
+/**
+ * deadzone for controller sticks
+ * @constant {Number}
+ */
 const DEADZONE = 0.2;
 
+/**
+ * @type {Object<string, boolean|number>}
+ */
 export const gamepadState = {
   left: false,
   right: false,
@@ -16,6 +23,10 @@ export const gamepadState = {
 let prevJump = false;
 let prevStart = false;
 
+/**
+ * poll gamepad input
+ * @returns {void}
+ */
 export function pollGamepad() {
   const gamepads = navigator.getGamepads();
   let gp = null;

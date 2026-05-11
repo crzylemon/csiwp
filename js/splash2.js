@@ -1,10 +1,30 @@
 import { drawText, TEXT_TILE } from './text.js';
 import { siteCheck } from './siteCheck.js';
 
+/**
+ * splash screen duration in seconds
+ * @type {number}
+ */
 const SPLASH_DURATION = 2.5;
+
+/**
+ * fade in duration in seconds
+ * @type {number}
+ */
 const FADE_IN = 0.5;
+
+/**
+ * fade out duration in seconds
+ * @type {number}
+ */
 const FADE_OUT = 0.5;
 
+/**
+ * wrap text into lines of max character width
+ * @param {string} str text to wrap
+ * @param {number} maxChars max characters per line
+ * @returns {Array<string>}
+ */
 function wrapText(str, maxChars) {
   const words = str.split(' ');
   const lines = [];
@@ -23,6 +43,10 @@ function wrapText(str, maxChars) {
   return lines;
 }
 
+/**
+ * random splash messages
+ * @type {Array<string>}
+ */
 const MESSAGES = [
   "ALSO TRY MINECRAFT!",
   "FRIDAY NIGHT FUN- WAIT...",
@@ -44,10 +68,19 @@ const MESSAGES = [
   "BEE MOVIE HERE",
 ];
 
+/**
+ * ease in out function
+ * @param {number} t progress 0-1
+ * @returns {number}
+ */
 function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
+/**
+ * load the bee movie script
+ * @returns {Promise<string|null>}
+ */
 async function beeMovie() {
   try {
     const response = await fetch('bee.txt');
@@ -59,7 +92,14 @@ async function beeMovie() {
   }
 }
 
+/**
+ * the second splash screen (random message or bee movie)
+ */
 export class SplashScreen2 {
+  /**
+   * the second splash screen
+   * @constructor
+   */
   constructor() {
     this.timer = 0;
     this.done = false;
@@ -93,7 +133,11 @@ export class SplashScreen2 {
     }
   }
 
-
+  /**
+   * update splash timer and scroll
+   * @param {number} dt delta time
+   * @returns {void}
+   */
   update(dt) {
     this.timer += dt;
     if (this.isBeeMovie) {
@@ -112,6 +156,13 @@ export class SplashScreen2 {
     }
   }
 
+  /**
+   * draw the splash screen
+   * @param {CanvasRenderingContext2D} ctx canvas context
+   * @param {number} viewWidth view width
+   * @param {number} viewHeight view height
+   * @returns {void}
+   */
   draw(ctx, viewWidth, viewHeight) {
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, viewWidth, viewHeight);

@@ -2,7 +2,15 @@ import { siteCheck } from './siteCheck.js';
 import { drawSprite, SPRITES, TILE_SIZE } from './sprites.js';
 import { drawText } from './text.js';
 
+/**
+ * the game renderer
+ */
 export class Renderer {
+  /**
+   * the game renderer
+   * @param {CanvasRenderingContext2D} ctx canvas context
+   * @constructor
+   */
   constructor(ctx) {
     this.ctx = ctx;
     this.animFrame = 0;
@@ -10,6 +18,11 @@ export class Renderer {
     this.animInterval = 0.1; // seconds between frames
   }
 
+  /**
+   * advance animation timer
+   * @param {number} dt delta time
+   * @returns {void}
+   */
   tick(dt) {
     this.animTimer += dt;
     this.animTicked = false;
@@ -20,15 +33,33 @@ export class Renderer {
     }
   }
 
+  /**
+   * clear the screen
+   * @param {number} width canvas width
+   * @param {number} height canvas height
+   * @returns {void}
+   */
   clear(width, height) {
     this.ctx.fillStyle = '#1a1a2e';
     this.ctx.fillRect(0, 0, width, height);
   }
 
+  /**
+   * draw the player sprite
+   * @param {Object} player the player object
+   * @returns {void}
+   */
   drawPlayer(player) {
     drawSprite(this.ctx, SPRITES.PLAYER, player.x, player.y);
   }
 
+  /**
+   * draw platforms with auto-tiling
+   * @param {Array<Object>} platforms platform objects
+   * @param {number} levelWidth level width in pixels
+   * @param {number} levelHeight level height in pixels
+   * @returns {void}
+   */
   drawPlatforms(platforms, levelWidth, levelHeight) {
     // build all of it
     const occupied = new Set();
@@ -89,6 +120,11 @@ export class Renderer {
     }
   }
 
+  /**
+   * draw conveyor belts
+   * @param {Array<Object>} conveyors conveyor objects
+   * @returns {void}
+   */
   drawConveyors(conveyors) {
     for (const c of conveyors) {
       const cols = Math.ceil(c.width / TILE_SIZE);
@@ -123,6 +159,11 @@ export class Renderer {
     }
   }
 
+  /**
+   * draw spike hazards
+   * @param {Array<Object>} hazards hazard objects
+   * @returns {void}
+   */
   drawHazards(hazards) {
     for (const h of hazards) {
       const cols = Math.ceil(h.width / TILE_SIZE);
@@ -141,12 +182,22 @@ export class Renderer {
     }
   }
 
+  /**
+   * draw the goal flag
+   * @param {Object} goal the goal object
+   * @returns {void}
+   */
   drawGoal(goal) {
     // new animated flag
     const frameIdx = SPRITES.FLAG[this.animFrame];
     drawSprite(this.ctx, frameIdx, goal.x, goal.y);
   }
 
+  /**
+   * draw spring objects
+   * @param {Array<Object>} springs spring objects
+   * @returns {void}
+   */
   drawSprings(springs) {
     if (!springs) return;
     const frameDur = this.animInterval;
@@ -183,6 +234,28 @@ export class Renderer {
     }
   }
 
+  /**
+   * draw hidden spikes that reveal on trigger
+   * @param {Array<Object>} hiddenSpikes hidden spike objects
+   * @returns {void}
+   */
+  drawHiddenSpikes(hiddenSpikes) {
+    if (!hiddenSpikes) return;
+    for (const s of hiddenSpikes) {
+      if (!s._revealed) continue;
+      const progress = Math.min((s._animTimer || 0) / 0.15, 1);
+      const drawY = s.y + 9 - progress * 4;
+      this.ctx.globalAlpha = progress;
+      drawSprite(this.ctx, SPRITES.SPIKES, s.x, drawY);
+      this.ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * draw the death counter
+   * @param {number} deaths number of deaths
+   * @returns {void}
+   */
   drawDeathCount(deaths) {
     if (siteCheck()) {
       drawText(this.ctx, `DEATHS-${deaths}`, 2, 2);
@@ -191,6 +264,12 @@ export class Renderer {
     }
   }
 
+  /**
+   * draw level text labels
+   * @param {Array<Object>} texts text position objects
+   * @param {Array<string>} levelTexts text strings
+   * @returns {void}
+   */
   drawLevelTexts(texts, levelTexts) {
     if (!texts) return;
     for (const t of texts) {

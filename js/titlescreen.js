@@ -1,19 +1,71 @@
 import { drawText, TEXT_TILE } from './text.js';
 import { siteCheck } from './siteCheck.js';
+import { getLastInput, drawControllerIcon } from './controllericons.js';
 
+/**
+ * badge width in pixels
+ * @type {number}
+ */
 const BADGE_WIDTH = 96;
-const BADGE_HEIGHT = 16;
-let BADGE_INDEX = 2; // 0=DEMO, 1=BETA, 2=ALPHA, 3=UNAUTHORIZED
 
-// badge drop
-const DROP_DELAY = 0.5;   // seconds before badge drops
-const DROP_DURATION = 0.3; // how long the drop takes
-const SHAKE_DURATION = 0.3; // screen shake after landing
+/**
+ * badge height in pixels
+ * @type {number}
+ */
+const BADGE_HEIGHT = 16;
+
+/**
+ * badge index (0=demo, 1=beta, 2=alpha, 3=unauthorized)
+ * @type {number}
+ */
+let BADGE_INDEX = 2;
+
+/**
+ * delay before badge drops in seconds
+ * @type {number}
+ */
+const DROP_DELAY = 0.5;
+
+/**
+ * badge drop animation duration in seconds
+ * @type {number}
+ */
+const DROP_DURATION = 0.3;
+
+/**
+ * screen shake duration after badge lands
+ * @type {number}
+ */
+const SHAKE_DURATION = 0.3;
+
+/**
+ * screen shake intensity
+ * @type {number}
+ */
 const SHAKE_INTENSITY = 2;
 
+/**
+ * logo image element
+ * @type {HTMLImageElement|null}
+ */
 let logoImg = null;
+
+/**
+ * badge image element
+ * @type {HTMLImageElement|null}
+ */
 let badgeImg = null;
+
+/**
+ * whether logo is loaded
+ * @type {boolean}
+ */
 let logoLoaded = false;
+
+/**
+ * whether badge is loaded
+ * @type {boolean}
+ */
 let badgeLoaded = false;
 
 // load needed stuff
@@ -25,6 +77,11 @@ const badge = new Image();
 badge.onload = () => { badgeImg = badge; badgeLoaded = true; };
 badge.src = 'logobadges.png';
 
+/**
+ * ease in with bounce at end
+ * @param {number} t progress 0-1
+ * @returns {number}
+ */
 function easeInBounce(t) {
   // accelerate down and then a boing
   if (t < 0.7) return (t / 0.7) * (t / 0.7);
@@ -32,7 +89,14 @@ function easeInBounce(t) {
   return 1 - Math.sin(bounce * Math.PI) * 0.15;
 }
 
+/**
+ * the title screen
+ */
 export class TitleScreen {
+  /**
+   * the title screen
+   * @constructor
+   */
   constructor() {
     this.timer = 0;
     this.blinkTimer = 0;
@@ -44,6 +108,11 @@ export class TitleScreen {
     }
   }
 
+  /**
+   * update title screen animations
+   * @param {number} dt delta time
+   * @returns {void}
+   */
   update(dt) {
     this.timer += dt;
     this.blinkTimer += dt;
@@ -60,6 +129,13 @@ export class TitleScreen {
     }
   }
 
+  /**
+   * draw the title screen
+   * @param {CanvasRenderingContext2D} ctx canvas context
+   * @param {number} viewWidth view width
+   * @param {number} viewHeight view height
+   * @returns {void}
+   */
   draw(ctx, viewWidth, viewHeight) {
     ctx.save();
 
@@ -121,14 +197,24 @@ export class TitleScreen {
       drawText(ctx, "CSIWP", Math.round(viewWidth / 2 - 24), Math.round(viewHeight / 2 - 10));
     }
 
-    // press space
+    // press space / controller button
     if (this.showPress && this.badgeLanded) {
-      let prompt = "PRESS SPACE";
       if (!siteCheck()) {
-        prompt = "LOG OFF NOW" // lowtiergod reference
+        const prompt = "LOG OFF NOW";
+        const px = Math.round((viewWidth - prompt.length * TEXT_TILE) / 2);
+        drawText(ctx, prompt, px, viewHeight - 10);
+      } else if (getLastInput() === 'controller') {
+        // Show "PRESS [A]" with controller icon
+        const label = "PRESS";
+        const totalW = label.length * TEXT_TILE + TEXT_TILE + 2; // text + icon + gap
+        const startX = Math.round((viewWidth - totalW) / 2);
+        drawText(ctx, label, startX, viewHeight - 10);
+        drawControllerIcon(ctx, 'A', startX + label.length * TEXT_TILE + 2, viewHeight - 10);
+      } else {
+        const prompt = "PRESS SPACE";
+        const px = Math.round((viewWidth - prompt.length * TEXT_TILE) / 2);
+        drawText(ctx, prompt, px, viewHeight - 10);
       }
-      const px = Math.round((viewWidth - prompt.length * TEXT_TILE) / 2);
-      drawText(ctx, prompt, px, viewHeight - 10);
     }
 
     ctx.restore();

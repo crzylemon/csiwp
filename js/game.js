@@ -15,7 +15,11 @@ import { ParticleSystem } from './particles.js';
 import { MovingPlatform } from './movingplatform.js';
 import { AirVent } from './airvent.js';
 import { Door } from './door.js';
-import { initAudio, sfxJump, sfxLand, sfxDeath, sfxSpring, sfxGoal, sfxMenuSelect } from './audio.js';
+import { initAudio, sfxJump, sfxLand, sfxDeath, sfxSpring, sfxGoal, sfxMenuSelect, sfxSpikeAppear, playMusic } from './audio.js';
+import { Transition } from './transition.js';
+import { ResultScreen } from './resultscreen.js';
+import { loadBackground, drawBackground, setBaseY } from './parallax.js';
+import { loadControllerIcons, detectControllerType, drawControllerIcon, getLastInput, setLastInput } from './controllericons.js';
 import { siteCheck } from './siteCheck.js';
 
 const VIEW_HEIGHT = 72;
@@ -44,6 +48,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
+// fake thing
 if (!siteCheck()) {
   // timer
   setTimeout(() => {
@@ -58,18 +63,21 @@ definedCamera = true;
 
 let currentLevel = 0;
 let deaths = 0;
+let levelDeaths = 0;
+let levelTime = 0;
 let level = levels[currentLevel];
 const player = new Player(level.spawn.x, level.spawn.y);
 
-// Initialize moving platforms from level data
+// initialize moving platforms
 let movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
 let airVents = (level.airVents || []).map(d => new AirVent(d));
 let doors = (level.doors || []).map(d => new Door(d));
 
-// Position camera at spawn initially
+// position cam at spawn
 camera.x = level.spawn.x + 4 - VIEW_WIDTH / 2;
 camera.y = level.spawn.y + 4 - VIEW_HEIGHT / 2;
 camera.clamp(level.width || 320, level.height || 180);
+setBaseY(camera.y);
 
 let lastTime = 0;
 
@@ -80,6 +88,8 @@ const splashScreen2 = new SplashScreen2();
 const titleScreen = new TitleScreen();
 const deathEffect = new DeathEffect();
 const particles = new ParticleSystem();
+const transition = new Transition();
+const resultScreen = new ResultScreen();
 
 // die
 let shakeTimer = 0;
@@ -98,6 +108,10 @@ let portalTimer = 0;
 let justRespawned = false;
 const PORTAL_DURATION = 0.48; // last 60% of fragment travel
 
+/**
+ * get all conveyer colliders
+ * @returns {Array<{x, y, width, height}>}
+ */
 function getConveyorColliders(conveyors) {
   return conveyors.map(c => ({
     x: c.x,
@@ -107,6 +121,13 @@ function getConveyorColliders(conveyors) {
   }));
 }
 
+/**
+ * apply conveyor movement to player
+ * @param {Player} player the player
+ * @param {Array<{x, y, width, direction}>} conveyors conveyer colliders
+ * @param {number} dt deltatime
+ * @returns {void}
+ */
 function applyConveyorPush(player, conveyors, dt) {
   for (const c of conveyors) {
     const onTop =
@@ -121,6 +142,10 @@ function applyConveyorPush(player, conveyors, dt) {
   }
 }
 
+/**
+ * start the level
+ * @returns {void}
+ */
 function startLevel() {
   state = 'portal';
   player.dead = true;
@@ -128,20 +153,43 @@ function startLevel() {
   deathEffect.triggerFromBelow(level.spawn.x, level.spawn.y);
 }
 
+/**
+ * muhahahaha
+ * kill the player
+ * @returns {void}
+ */
 function triggerDeath() {
   deaths++;
+  levelDeaths++;
   shakeTimer = SHAKE_DURATION;
   flashTimer = FLASH_DURATION;
   state = 'shaking';
   player.dead = true;
   deathEffect.trigger(player.x, player.y, level.spawn.x, level.spawn.y);
   sfxDeath();
+  // reset hidden spikes
+  setTimeout(() => {
+    for (const s of (level.hiddenSpikes || [])) {
+      s._revealed = false;
+      s._animTimer = 0;
+    }
+  }, 250);
 }
 
+/**
+ * reusable ease in out func
+ * @param {Number} t progress (0-1)
+ * @returns {Number}
+ */
 function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
+/**
+ * update game
+ * @param {Number} dt delta time
+ * @returns {void}
+ */
 function update(dt) {
   if (state === 'shaking') {
     // wait for the shake to finish
@@ -189,6 +237,8 @@ function update(dt) {
   }
 
   // gameplay
+  if (transition.active || resultScreen.active) return; // freeze during transition, NO MORE GAMEPLAY
+
   // Update moving platforms first
   for (const mp of movingPlatforms) mp.update(dt);
 
@@ -277,7 +327,28 @@ function update(dt) {
           player.x = h.x + h.width;
         }
       } else {
-        // Vertical collision so now you die
+        // vertical collision so now you die
+        triggerDeath();
+        return;
+      }
+    }
+  }
+
+  // invisible spikes that appear when you get close, very evil!
+  for (const s of (level.hiddenSpikes || [])) {
+    const triggerDist = s.triggerDistance || 20;
+    const dx = (player.x + player.width / 2) - (s.x + 4);
+    const dy = (player.y + player.height / 2) - (s.y + 4);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (!s._revealed && dist < triggerDist) {
+      s._revealed = true;
+      s._animTimer = 0;
+      sfxSpikeAppear();
+    }
+    if (s._revealed) {
+      s._animTimer = Math.min((s._animTimer || 0) + dt, 0.15);
+      // Kill on overlap once fully emerged
+      if (s._animTimer >= 0.15 && player._overlaps({ x: s.x, y: s.y + 4, width: 8, height: 4 })) {
         triggerDeath();
         return;
       }
@@ -310,29 +381,16 @@ function update(dt) {
 
   // do i WIN?
   const goalRect = level.goal;
-  if (player._overlaps(goalRect)) {
+  if (player._overlaps(goalRect) && !transition.active && !resultScreen.active) {
     sfxGoal();
-    currentLevel++;
-    if (currentLevel < levels.length) {
-      level = levels[currentLevel];
-      movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
-      airVents = (level.airVents || []).map(d => new AirVent(d));
-      doors = (level.doors || []).map(d => new Door(d));
-      player.respawn(level.spawn.x, level.spawn.y);
-      // Reset camera to new spawn
-      camera.x = level.spawn.x + 4 - VIEW_WIDTH / 2;
-      camera.y = level.spawn.y + 4 - VIEW_HEIGHT / 2;
-      camera.clamp(level.width || 320, level.height || 180);
-      startLevel();
-    } else {
-      currentLevel = 0;
-      level = levels[currentLevel];
-      movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
-      airVents = (level.airVents || []).map(d => new AirVent(d));
-      doors = (level.doors || []).map(d => new Door(d));
-      player.respawn(level.spawn.x, level.spawn.y);
-    }
+    player.dead = true;
+    const parDeaths = level.parDeaths || 3;
+    const parTime = level.parTime || 30;
+    resultScreen.show(levelDeaths, levelTime, parDeaths, parTime);
   }
+
+  // track level time
+  levelTime += dt;
 
   // camera follows the player
   camera.follow(player, dt);
@@ -344,6 +402,8 @@ function draw() {
   ctx.scale(RENDER_SCALE, RENDER_SCALE);
 
   renderer.clear(VIEW_WIDTH, VIEW_HEIGHT);
+
+  drawBackground(ctx, VIEW_WIDTH, VIEW_HEIGHT, camera.x, camera.y);
 
   ctx.save();
 
@@ -361,6 +421,7 @@ function draw() {
   renderer.drawConveyors(level.conveyors || []);
   renderer.drawHazards(level.hazards);
   renderer.drawSprings(level.springs);
+  renderer.drawHiddenSpikes(level.hiddenSpikes);
   // draw moving platforms
   for (const mp of movingPlatforms) mp.draw(ctx);
   // draw air vents
@@ -397,6 +458,12 @@ function draw() {
 
   renderer.drawDeathCount(deaths);
 
+  // result screen
+  resultScreen.draw(ctx, VIEW_WIDTH, VIEW_HEIGHT);
+
+  // screen transition
+  transition.draw(ctx, VIEW_WIDTH, VIEW_HEIGHT);
+
   ctx.restore();
 }
 
@@ -405,6 +472,10 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   pollGamepad();
+  if (gamepadState.left || gamepadState.right || gamepadState.jump || gamepadState.start) {
+    setLastInput('controller');
+    detectControllerType();
+  }
 
   if (gameState === 'splash') {
     ctx.save();
@@ -434,7 +505,36 @@ function loop(timestamp) {
     titleScreen.update(dt);
     titleScreen.draw(ctx, VIEW_WIDTH, VIEW_HEIGHT);
     ctx.restore();
-    if (gamepadState.startPressed) { gameState = 'playing'; startLevel(); }
+    if (gamepadState.startPressed) { gameState = 'playing'; startLevel(); playMusic(); }
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  if (gameState === 'paused') {
+    // draw the game frozen underneath
+    draw();
+    // dark overlay
+    ctx.save();
+    ctx.scale(RENDER_SCALE, RENDER_SCALE);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    // paused
+    const pauseText = "PAUSED";
+    const px = Math.round((VIEW_WIDTH - pauseText.length * 8) / 2);
+    drawText(ctx, pauseText, px, VIEW_HEIGHT / 2 - 12);
+    if (getLastInput() === 'controller') {
+      const label = "PRESS";
+      const totalW = label.length * 8 + 8 + 2;
+      const startX = Math.round((VIEW_WIDTH - totalW) / 2);
+      drawText(ctx, label, startX, VIEW_HEIGHT / 2 + 4);
+      drawControllerIcon(ctx, 'A', startX + label.length * 8 + 2, VIEW_HEIGHT / 2 + 4);
+    } else {
+      const resumeText = "ESC TO RESUME";
+      const rx = Math.round((VIEW_WIDTH - resumeText.length * 8) / 2);
+      drawText(ctx, resumeText, rx, VIEW_HEIGHT / 2 + 4);
+    }
+    ctx.restore();
+    if (gamepadState.startPressed) gameState = 'playing';
     requestAnimationFrame(loop);
     return;
   }
@@ -446,6 +546,8 @@ function loop(timestamp) {
   update(dt);
   deathEffect.update(dt);
   particles.update(dt);
+  transition.update(dt);
+  resultScreen.update(dt);
   renderer.tick(dt);
   draw();
   requestAnimationFrame(loop);
@@ -453,18 +555,45 @@ function loop(timestamp) {
 
 // skip the stuff
 window.addEventListener('keydown', (e) => {
+  setLastInput('keyboard');
   if (gameState === 'splash' && e.code === 'Space') {
     gameState = 'splash2';
   } else if (gameState === 'splash2' && e.code === 'Space') {
     gameState = 'title';
   } else if (gameState === 'title' && e.code === 'Space') {
     gameState = 'playing';
+    levelDeaths = 0;
+    levelTime = 0;
     startLevel();
     sfxMenuSelect();
+    playMusic();
+  } else if (gameState === 'playing' && e.code === 'Escape') {
+    if (resultScreen.active) return; // don't pause during results
+    gameState = 'paused';
+  } else if (gameState === 'playing' && e.code === 'Space' && resultScreen.active && resultScreen.timer > 1.5) {
+    resultScreen.active = false;
+    transition.start(VIEW_WIDTH, VIEW_HEIGHT, () => {
+      currentLevel++;
+      if (currentLevel >= levels.length) currentLevel = 0;
+      level = levels[currentLevel];
+      movingPlatforms = (level.movingPlatforms || []).map(d => new MovingPlatform(d));
+      airVents = (level.airVents || []).map(d => new AirVent(d));
+      doors = (level.doors || []).map(d => new Door(d));
+      player.respawn(level.spawn.x, level.spawn.y);
+      camera.x = level.spawn.x + 4 - VIEW_WIDTH / 2;
+      camera.y = level.spawn.y + 4 - VIEW_HEIGHT / 2;
+      camera.clamp(level.width || 320, level.height || 180);
+      setBaseY(camera.y);
+      levelDeaths = 0;
+      levelTime = 0;
+      startLevel();
+    });
+  } else if (gameState === 'paused' && (e.code === 'Escape' || e.code === 'Space')) {
+    gameState = 'playing';
   }
 });
 
-Promise.all([loadSprites(), loadTextSheet()]).then(() => {
+Promise.all([loadSprites(), loadTextSheet(), loadBackground(), loadControllerIcons()]).then(() => {
   initRespawnFrames();
   initAudio();
   lastTime = performance.now();

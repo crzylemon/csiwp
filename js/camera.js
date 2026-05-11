@@ -1,4 +1,13 @@
+/**
+ * the camera
+ */
 export class Camera {
+  /**
+   * the camera
+   * @param {number} viewWidth width of camera view
+   * @param {number} viewHeight height of camera view
+   * @constructor
+   */
   constructor(viewWidth, viewHeight) {
     this.x = 0;
     this.y = 0;
@@ -7,6 +16,12 @@ export class Camera {
     this.smoothing = 8;
   }
 
+  /**
+   * follow a target
+   * @param {Object} target the target to follow
+   * @param {number} dt delta time
+   * @returns {void}
+   */
   follow(target, dt) {
     const tx = target.x + target.width / 2 - this.viewWidth / 2;
     const ty = target.y + target.height / 2 - this.viewHeight / 2;
@@ -15,7 +30,12 @@ export class Camera {
     this.x += (tx - this.x) * t;
     this.y += (ty - this.y) * t;
   }
-
+  /**
+   * clamp the camera to stay in bounds
+   * @param {Number} levelWidth 
+   * @param {Number} levelHeight 
+   * @returns {void}
+   */
   clamp(levelWidth, levelHeight) {
     if (this.x < 0) this.x = 0;
     if (this.y < 0) this.y = 0;

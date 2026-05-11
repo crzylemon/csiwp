@@ -1,13 +1,35 @@
+/**
+ * tile size for text characters
+ * @type {number}
+ */
 const TILE = 8;
+
+/**
+ * supported character set
+ * @type {string}
+ */
 const CHARSET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-x!.';
+
+/**
+ * number of characters in charset
+ * @type {number}
+ */
 const CHAR_COUNT = CHARSET.length; // 40
 
+/**
+ * text sprite sheet data
+ * @type {{image: HTMLImageElement|null, loaded: boolean, cols: number}}
+ */
 export const textSheet = {
   image: null,
   loaded: false,
   cols: 0,
 };
 
+/**
+ * load the text sprite sheet
+ * @returns {Promise<void>}
+ */
 export function loadTextSheet() {
   return new Promise((resolve) => {
     const img = new Image();
@@ -21,7 +43,14 @@ export function loadTextSheet() {
   });
 }
 
-// draw a string using the font
+/**
+ * draw a string using the bitmap font
+ * @param {CanvasRenderingContext2D} ctx canvas context
+ * @param {string} str text to draw
+ * @param {number} x x position
+ * @param {number} y y position
+ * @returns {void}
+ */
 export function drawText(ctx, str, x, y) {
   const upper = str.toUpperCase();
   for (let i = 0; i < upper.length; i++) {
@@ -43,7 +72,13 @@ export function drawText(ctx, str, x, y) {
   }
 }
 
-// draw CRZ.Network Logo
+/**
+ * draw the crz.network logo
+ * @param {CanvasRenderingContext2D} ctx canvas context
+ * @param {number} x x position
+ * @param {number} y y position
+ * @returns {void}
+ */
 export function drawLogo(ctx, x, y) {
   const logoStartIdx = CHAR_COUNT; // tiles after the charset
   const logoTiles = 30;

@@ -1,12 +1,31 @@
 import { spriteSheet, SPRITES } from './sprites.js';
 import { siteCheck } from './siteCheck.js';
 
-
+/**
+ * size of a tile
+ * @constant {Number}
+ */
 const TILE = 8;
+/**
+ * size of a fragment
+ * @constant {Number}
+ */
 const FRAG_SIZE = 2;
-const FRAG_COUNT = (TILE / FRAG_SIZE) * (TILE / FRAG_SIZE); // we dont use this but just in case we need to later
+/**
+ * number of fragments in a tile
+ * we dont use this in the code yet but just in case
+ * @constant {Number}
+ */
+const FRAG_COUNT = (TILE / FRAG_SIZE) * (TILE / FRAG_SIZE);
 
+/**
+ * death effect for player
+ */
 export class DeathEffect {
+  /**
+   * death effect for player
+   * @constructor
+   */
   constructor() {
     this.fragments = [];
     this.active = false;
@@ -27,7 +46,11 @@ export class DeathEffect {
     return this.explodeDuration + this.travelDuration + this.assembleDuration;
   }
 
-  // spawn version
+  /**
+   * * trigger death effect from below, for level start
+   * @param {number} spawnX
+   * @param {number} spawnY
+   */
   triggerFromBelow(spawnX, spawnY) {
     this.active = true;
     this.timer = 0;
@@ -63,6 +86,13 @@ export class DeathEffect {
     }
   }
 
+  /**
+   * trigger death effect
+   * @param {number} deathX
+   * @param {number} deathY
+   * @param {number} spawnX
+   * @param {number} spawnY
+   */
   trigger(deathX, deathY, spawnX, spawnY) {
     this.active = true;
     this.timer = 0;
@@ -106,6 +136,10 @@ export class DeathEffect {
     }
   }
 
+  /**
+   * update death effect
+   * @param {number} dt
+   */
   update(dt) {
     if (!this.active) return;
     this.timer += dt;
@@ -159,6 +193,10 @@ export class DeathEffect {
     }
   }
 
+  /**
+   * draw death effect
+   * @param {CanvasRenderingContext2D} ctx
+   */
   draw(ctx) {
     if (!this.active) return;
     if (!siteCheck()) return; // dont draw it if site check failed
@@ -184,6 +222,11 @@ export class DeathEffect {
   }
 }
 
+/**
+ * reusable ease in out func
+ * @param {Number} t progress (0-1)
+ * @returns {Number}
+ */
 function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }

@@ -1,4 +1,4 @@
-// Text messages indexed by levels
+// text messages indexed by levels
 export const LEVEL_TEXTS = [
   "WELCOME TO CSIWP",
   "JUMP OVER THIS GAP",
@@ -14,6 +14,8 @@ export const LEVEL_TEXTS = [
 
 export const levels = [
 {
+  "parDeaths": 3,
+  "parTime": 30,
   "width": 512,
   "height": 512,
   "spawn": {
@@ -149,14 +151,6 @@ export const levels = [
       "height": 8,
       "force": 300,
       "rotation": 0
-    },
-    {
-      "x": 80,
-      "y": 488,
-      "width": 8,
-      "height": 8,
-      "force": 300,
-      "rotation": 45
     }
   ],
   "movingPlatforms": [
@@ -198,6 +192,13 @@ export const levels = [
       "height": 16,
       "openTime": 3,
       "closeTime": 2
+    }
+  ],
+  "hiddenSpikes": [
+    {
+      "x": 104,
+      "y": 488,
+      "triggerDistance": 20
     }
   ]
 }
