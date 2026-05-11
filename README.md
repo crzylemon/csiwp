@@ -4,7 +4,7 @@ A pixel art rage platformer built with HTML5 Canvas 2D, themed in a factory.
 
 ## Play
 
-Open `index.html` in a localhost or [visit the hosted version on CRZ.Network](https://crz.network:21212/csiwp/).
+Open `index.html` in a localhost or [visit the hosted version on CRZ.Network](https://crz.network:21212/a-s/).
 
 ## Controls
 
