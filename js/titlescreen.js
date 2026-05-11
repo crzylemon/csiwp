@@ -71,7 +71,7 @@ let badgeLoaded = false;
 // load needed stuff
 const logo = new Image();
 logo.onload = () => { logoImg = logo; logoLoaded = true; };
-logo.src = 'as.png';
+logo.src = 'a-r.png';
 
 const badge = new Image();
 badge.onload = () => { badgeImg = badge; badgeLoaded = true; };

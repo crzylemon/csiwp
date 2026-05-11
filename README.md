@@ -34,8 +34,8 @@ js/
   respawn.js        - Respawn animation (blue channel = opacity)
   gamepad.js        - Controller support via Gamepad API
 gamesprites.png     - Game sprite sheet (8x8 tiles)
-as-text.png         - Bitmap font + CRZ.Network logo
-as.png              - Game logo
+a-r-text.png        - Bitmap font + CRZ.Network logo
+a-r.png             - Game logo
 logobadges.png      - Version badges (DEMO/BETA/ALPHA/UNAUTHORIZED)
 generate_bee.py     - Generates bee.txt from the Bee Movie script
 ```
